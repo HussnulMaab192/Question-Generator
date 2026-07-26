@@ -1,0 +1,8 @@
+# See backend/.gitignore and frontend/.gitignore for stack-specific rules.
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
