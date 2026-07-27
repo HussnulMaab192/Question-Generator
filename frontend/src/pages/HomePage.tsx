@@ -1,24 +1,20 @@
 import { useEffect, useState } from "react";
 
 import { getHealth } from "@/api/endpoints/health";
-import CategorySelector from "@/components/categories/CategorySelector";
+import CompetitionSetup from "@/components/competition/CompetitionSetup";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type ConnectionState = "checking" | "online" | "offline";
 
 /**
- * Landing/dashboard page.
- *
- * Verifies frontend/backend connectivity and lets the user pick a category
- * that is fetched dynamically from the backend workbook. Question
- * generation itself is not implemented yet - selecting a category is
- * currently just a UI-level selection.
+ * Landing page: verifies frontend/backend connectivity, then renders the
+ * competition setup screen (category selection, per-category question
+ * counts, live summary, and the "Generate Questions" call-to-action).
+ * Question generation itself is not implemented yet.
  */
 export default function HomePage() {
   const [connection, setConnection] = useState<ConnectionState>("checking");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -43,9 +39,8 @@ export default function HomePage() {
           Quran Competition Question Generator
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-          Select a category below to get started. Question generation logic has not been
-          implemented yet — categories are already fully data-driven from the backend
-          workbook.
+          Select one or more categories, choose how many questions to draw from each, then
+          generate the competition question set.
         </p>
       </section>
 
@@ -69,32 +64,13 @@ export default function HomePage() {
 
       <section className="flex flex-col gap-3">
         <div>
-          <h2 className="text-lg font-semibold tracking-tight">Categories</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Competition Setup</h2>
           <p className="text-sm text-muted-foreground">
-            Loaded dynamically from every sheet in the backend&apos;s questions workbook.
+            Categories are loaded dynamically from the backend&apos;s questions workbook.
           </p>
         </div>
-        <CategorySelector
-          selectedCategoryId={selectedCategoryId}
-          onSelectCategory={setSelectedCategoryId}
-        />
+        <CompetitionSetup />
       </section>
-
-      {selectedCategoryId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Selected category: {selectedCategoryId}</CardTitle>
-            <CardDescription>
-              Question generation for this category is not implemented yet.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Coming soon
-            </span>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
