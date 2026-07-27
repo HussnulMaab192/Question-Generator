@@ -2,9 +2,25 @@
 
 from typing import Generic, Optional, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 T = TypeVar("T")
+
+
+def to_camel_case(field_name: str) -> str:
+    """Convert a snake_case field name to camelCase for JSON serialization."""
+    first, *rest = field_name.split("_")
+    return first + "".join(word.capitalize() for word in rest)
+
+
+class CamelModel(BaseModel):
+    """Base model that (de)serializes snake_case attributes as camelCase JSON.
+
+    Use this for any schema exposed to the frontend so Python code can stay
+    idiomatic (snake_case) while the API contract stays camelCase.
+    """
+
+    model_config = ConfigDict(populate_by_name=True, alias_generator=to_camel_case)
 
 
 class HealthResponse(BaseModel):

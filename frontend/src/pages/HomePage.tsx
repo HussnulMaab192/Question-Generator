@@ -1,40 +1,24 @@
 import { useEffect, useState } from "react";
 
 import { getHealth } from "@/api/endpoints/health";
+import CategorySelector from "@/components/categories/CategorySelector";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type ConnectionState = "checking" | "online" | "offline";
 
-const plannedFeatures = [
-  {
-    title: "Upload Source Data",
-    description: "Import Quran text and metadata from Excel workbooks.",
-  },
-  {
-    title: "Generate Questions",
-    description: "Automatically create competition questions from the source data.",
-  },
-  {
-    title: "Export Results",
-    description: "Download the generated question set as a formatted Excel file.",
-  },
-];
-
 /**
- * Landing/dashboard page. Currently a scaffold placeholder: it verifies
- * frontend/backend connectivity and previews the planned feature set.
- * No business logic is implemented yet.
+ * Landing/dashboard page.
+ *
+ * Verifies frontend/backend connectivity and lets the user pick a category
+ * that is fetched dynamically from the backend workbook. Question
+ * generation itself is not implemented yet - selecting a category is
+ * currently just a UI-level selection.
  */
 export default function HomePage() {
   const [connection, setConnection] = useState<ConnectionState>("checking");
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -59,9 +43,9 @@ export default function HomePage() {
           Quran Competition Question Generator
         </h1>
         <p className="max-w-2xl text-sm text-muted-foreground sm:text-base">
-          This is the project scaffold. Business logic for generating questions has not
-          been implemented yet — the layout, routing, and API wiring below are ready to
-          build on.
+          Select a category below to get started. Question generation logic has not been
+          implemented yet — categories are already fully data-driven from the backend
+          workbook.
         </p>
       </section>
 
@@ -83,21 +67,34 @@ export default function HomePage() {
         </span>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {plannedFeatures.map((feature) => (
-          <Card key={feature.title}>
-            <CardHeader>
-              <CardTitle className="text-base">{feature.title}</CardTitle>
-              <CardDescription>{feature.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Planned
-              </span>
-            </CardContent>
-          </Card>
-        ))}
+      <section className="flex flex-col gap-3">
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">Categories</h2>
+          <p className="text-sm text-muted-foreground">
+            Loaded dynamically from every sheet in the backend&apos;s questions workbook.
+          </p>
+        </div>
+        <CategorySelector
+          selectedCategoryId={selectedCategoryId}
+          onSelectCategory={setSelectedCategoryId}
+        />
       </section>
+
+      {selectedCategoryId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Selected category: {selectedCategoryId}</CardTitle>
+            <CardDescription>
+              Question generation for this category is not implemented yet.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Coming soon
+            </span>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

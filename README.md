@@ -29,14 +29,17 @@ Question Generator/
 ├── backend/                   FastAPI application
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── routes/        One module per resource (health.py, questions.py, ...)
+│   │   │   ├── routes/        One module per resource (health.py, categories.py, questions.py)
 │   │   │   └── router.py      Aggregates all routers
-│   │   ├── core/               Settings/config
-│   │   ├── models/            Pydantic request/response schemas
-│   │   ├── services/          Business logic layer (Excel I/O, question generation)
-│   │   └── main.py            FastAPI app entrypoint (CORS, router mounting)
-│   ├── tests/                 Pytest smoke tests
-│   ├── data/                  Uploaded/generated Excel files (gitignored)
+│   │   ├── core/               Settings/config (incl. workbook path)
+│   │   ├── models/            Pydantic request/response schemas (Category, ...)
+│   │   ├── services/          Business logic layer
+│   │   │   ├── excel_service.py     Loads the workbook once, derives categories
+│   │   │   ├── exceptions.py        Shared service-layer error types
+│   │   │   └── question_service.py  Placeholder for future question generation
+│   │   └── main.py            FastAPI entrypoint (CORS, lifespan workbook load, error handlers)
+│   ├── tests/                 Pytest suite (health, ExcelService, categories endpoint)
+│   ├── data/                  Place `competition_questions.xlsx` here (gitignored)
 │   ├── requirements.txt
 │   └── .env.example
 │
@@ -45,9 +48,11 @@ Question Generator/
 │   │   ├── api/                Axios client + typed endpoint functions
 │   │   ├── components/
 │   │   │   ├── layout/         AppLayout, Header, Footer (responsive)
+│   │   │   ├── categories/     CategorySelector (dynamic, workbook-driven)
 │   │   │   ├── common/         Small reusable helpers (e.g. LoadingSpinner)
 │   │   │   └── ui/             shadcn/ui primitives (Button, Card, ...)
 │   │   ├── config/             Environment variable access
+│   │   ├── hooks/              Reusable data-fetching hooks (useCategories, ...)
 │   │   ├── pages/               Route-level page components
 │   │   ├── routes/             Route path constants
 │   │   ├── types/              Shared TypeScript types
@@ -115,6 +120,55 @@ npm run preview   # Preview the production build locally
 npm run lint      # Lint the codebase
 ```
 
+## Data Layer (Questions Workbook)
+
+The backend is **fully data-driven**: it reads categories directly from an
+Excel workbook — no category/sheet names are ever hardcoded.
+
+- **Expected location:** `backend/data/competition_questions.xlsx`
+- **Format:** one sheet per selectable category. Sheet names can be
+  anything (`"30"`, `"Juz Amma Part 1"`, `"Surah Baqarah"`, `"Easy
+  Questions"`, ...) — the app discovers whatever sheets exist at load time.
+  The first row of each sheet is treated as a header; every non-empty row
+  below it counts as one available question.
+- **This repository does not include the workbook.** Download/export the
+  real spreadsheet as `.xlsx`, name it exactly `competition_questions.xlsx`,
+  and place it at `backend/data/competition_questions.xlsx`. The app will
+  never generate, fabricate, or overwrite this file for you.
+- The workbook is loaded **once**, at backend startup (`ExcelService`, see
+  `backend/app/services/excel_service.py`). Adding, removing, or renaming
+  sheets, or changing how many questions are in them, never requires a
+  code change — just restart the backend (or re-request `/categories` if
+  the file was missing on the previous startup attempt) so it re-reads the
+  file.
+
+### `GET /api/v1/categories`
+
+Returns one category per sheet, derived dynamically:
+
+```json
+[
+  { "id": "30", "name": "30", "questionCount": 10 },
+  { "id": "29", "name": "29", "questionCount": 8 }
+]
+```
+
+**Error handling** — if the workbook is missing or cannot be parsed, the
+endpoint responds with a clear error instead of silently returning nothing
+or fabricating sample data:
+
+| Situation                          | Response                                |
+| ----------------------------------- | ---------------------------------------- |
+| `competition_questions.xlsx` missing | `503` — `{ "detail": "Questions workbook not found at '...'. ..." }` |
+| Workbook present but corrupt/invalid | `500` — `{ "detail": "Could not open '...' as an Excel workbook: ..." }` |
+| Workbook present and valid           | `200` — dynamic category list            |
+
+The frontend's `CategorySelector` component (`frontend/src/components/categories/`)
+fetches this endpoint and renders one button per category automatically —
+there are no hardcoded category buttons anywhere in the UI. If the workbook
+is missing, the UI surfaces the backend's error message directly with a
+"Retry" action instead of showing fake/sample categories.
+
 ## Running Both Together
 
 Open two terminals:
@@ -131,11 +185,16 @@ backend `/health` endpoint so you can confirm both are wired up correctly.
 
 - ✅ Backend: FastAPI app, CORS, layered folder structure (`api` / `services`
   / `models`), health endpoint, placeholder `questions` route.
+- ✅ Backend data layer: `ExcelService` dynamically loads the questions
+  workbook and exposes `GET /api/v1/categories`, with proper error handling
+  for missing/invalid workbooks (no hardcoded categories, no fabricated data).
 - ✅ Frontend: Vite + React + TypeScript + Tailwind + shadcn/ui, routing,
   responsive layout (header with mobile nav, adaptive grid), typed API
   client.
-- ⏳ Not yet implemented: Excel parsing, question generation logic, file
-  upload/export flows, authentication, persistence.
+- ✅ Frontend category selection: dynamic, workbook-driven category buttons
+  (`CategorySelector`) with loading/error/retry states — no hardcoded UI.
+- ⏳ Not yet implemented: question generation logic, file upload/export
+  flows, authentication, persistence.
 
 ## Notes for Contributors
 

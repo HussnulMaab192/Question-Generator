@@ -7,6 +7,7 @@ supported variables.
 """
 
 from functools import lru_cache
+from pathlib import Path
 from typing import List
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -30,6 +31,11 @@ class Settings(BaseSettings):
     # Storage
     data_dir: str = "data"
 
+    # Name of the Excel workbook (inside `data_dir`) containing the
+    # competition questions. Each sheet in this workbook is treated as a
+    # selectable category - no sheet names are ever hardcoded.
+    questions_workbook_filename: str = "competition_questions.xlsx"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -41,6 +47,11 @@ class Settings(BaseSettings):
     def cors_origins_list(self) -> List[str]:
         """Return CORS origins as a clean list of strings."""
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def questions_workbook_path(self) -> Path:
+        """Absolute-or-relative path to the questions workbook on disk."""
+        return Path(self.data_dir) / self.questions_workbook_filename
 
 
 @lru_cache

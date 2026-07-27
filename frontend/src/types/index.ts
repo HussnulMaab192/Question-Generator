@@ -12,3 +12,14 @@ export interface HealthResponse {
   app_env: string;
   version: string;
 }
+
+/**
+ * A selectable question category, mirroring `backend/app/models/category.py`.
+ * One category corresponds to one sheet in the questions workbook - the set
+ * of categories is entirely dynamic and must never be hardcoded here.
+ */
+export interface Category {
+  id: string;
+  name: string;
+  questionCount: number;
+}
