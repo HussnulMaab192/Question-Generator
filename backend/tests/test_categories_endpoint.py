@@ -44,10 +44,9 @@ def test_categories_endpoint_returns_dynamic_categories(tmp_path: Path) -> None:
     workbook.remove(workbook.active)
 
     sheet = workbook.create_sheet(title="Juz Amma Part 2")
-    sheet.append(["Question", "Answer"])
-    sheet.append(["Q1", "A1"])
-    sheet.append(["Q2", "A2"])
-    sheet.append(["Q3", "A3"])
+    sheet.append(["Question 1", "Text 1"])
+    sheet.append(["Question 2", "Text 2"])
+    sheet.append(["Question 3", "Text 3"])
     workbook.save(workbook_path)
 
     service = ExcelService(workbook_path)

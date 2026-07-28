@@ -1,43 +1,47 @@
 """
-Domain schemas for Quran competition questions.
+Domain schemas for question generation.
 
-NOTE: This is an architectural placeholder only. Fields and validation
-rules will be fleshed out once the question-generation business logic
-is implemented.
+`Question` mirrors exactly what `ExcelService` parses out of a workbook
+sheet - no fixed column names are assumed anywhere in this layer either;
+this module only describes the *shape* of a parsed question, not how it
+was extracted.
 """
 
-from typing import Optional
+from typing import List
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.models.common import CamelModel
 
 
-class QuestionBase(BaseModel):
-    """Placeholder base schema for a single competition question.
+class Question(CamelModel):
+    """A single generated question, sourced from one row of a category sheet."""
 
-    TODO: Define real fields once requirements are finalized, e.g.:
-    - surah (str | int)
-    - ayah_from / ayah_to (int)
-    - question_type (enum)
-    - difficulty (enum)
+    category: str
+    """The category id (sheet name) this question was drawn from."""
+
+    question_number: int
+    """The question's number as detected in the sheet (or its row position)."""
+
+    text: str
+    """The question's display text (first non-empty text column found)."""
+
+    full_text: str
+    """
+    The full block for this question. Identical to `text` for now - kept
+    as a separate field so a richer "full passage" can be added later
+    without changing the response shape.
     """
 
-    id: Optional[str] = None
+
+class CategorySelection(BaseModel):
+    """One requested category + how many questions to draw from it."""
+
+    id: str = Field(min_length=1, description="Category id (sheet name) to draw questions from.")
+    count: int = Field(gt=0, description="Number of questions to draw from this category.")
 
 
 class GenerateQuestionsRequest(BaseModel):
-    """Placeholder request schema for triggering question generation.
+    """Request body for `POST /api/v1/generate`."""
 
-    TODO: Add real parameters, e.g. source file reference, number of
-    questions, surah range, difficulty distribution, etc.
-    """
-
-    pass
-
-
-class GenerateQuestionsResponse(BaseModel):
-    """Placeholder response schema for generated questions.
-
-    TODO: Return the generated question set once logic is implemented.
-    """
-
-    pass
+    categories: List[CategorySelection] = Field(min_length=1)

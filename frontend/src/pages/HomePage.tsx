@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { getHealth } from "@/api/endpoints/health";
-import CompetitionSetup from "@/components/competition/CompetitionSetup";
+import CompetitionWorkspace from "@/components/competition/CompetitionWorkspace";
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { cn } from "@/lib/utils";
 
@@ -9,9 +9,8 @@ type ConnectionState = "checking" | "online" | "offline";
 
 /**
  * Landing page: verifies frontend/backend connectivity, then renders the
- * competition setup screen (category selection, per-category question
- * counts, live summary, and the "Generate Questions" call-to-action).
- * Question generation itself is not implemented yet.
+ * two-stage competition workflow (setup, then generated questions). See
+ * `CompetitionWorkspace` for how those stages are switched.
  */
 export default function HomePage() {
   const [connection, setConnection] = useState<ConnectionState>("checking");
@@ -62,15 +61,7 @@ export default function HomePage() {
         </span>
       </section>
 
-      <section className="flex flex-col gap-3">
-        <div>
-          <h2 className="text-lg font-semibold tracking-tight">Competition Setup</h2>
-          <p className="text-sm text-muted-foreground">
-            Categories are loaded dynamically from the backend&apos;s questions workbook.
-          </p>
-        </div>
-        <CompetitionSetup />
-      </section>
+      <CompetitionWorkspace />
     </div>
   );
 }

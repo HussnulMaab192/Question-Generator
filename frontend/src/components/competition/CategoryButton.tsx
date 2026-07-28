@@ -1,4 +1,5 @@
 import { Check } from "lucide-react";
+import type { KeyboardEvent, MouseEvent } from "react";
 
 import QuestionCounter from "@/components/competition/QuestionCounter";
 import { cn } from "@/lib/utils";
@@ -14,12 +15,20 @@ export interface CategoryButtonProps {
 }
 
 /**
- * One selectable category tile.
+ * One compact, selectable category tile.
  *
- * Clicking the header toggles selection (green accent = selected). While
- * selected, it also shows how many questions are available and exposes
- * the per-category `QuestionCounter` - the counter never renders for an
- * unselected category.
+ * The ENTIRE tile is the toggle control (not just the label) - it's a
+ * `div` with `role="button"` rather than a native `<button>` because it
+ * needs to contain the counter's own nested buttons when selected (native
+ * buttons can't be nested inside one another). Clicks/keypresses on the
+ * counter call `stopPropagation()` so adjusting the count never also
+ * toggles selection.
+ *
+ * Designed for a dense grid of ~15+ categories: unselected tiles show
+ * just the category label; selecting one adds a "✓ selected" indicator
+ * and a compact `QuestionCounter` underneath. Category names/ids are
+ * never hardcoded here - whatever `category` the caller passes (derived
+ * dynamically from the backend workbook) is what renders.
  */
 export default function CategoryButton({
   category,
@@ -29,40 +38,49 @@ export default function CategoryButton({
   onIncrement,
   onDecrement,
 }: CategoryButtonProps) {
+  const handleToggle = () => onToggle(category);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleToggle();
+    }
+  };
+
+  const stopPropagation = (event: MouseEvent | KeyboardEvent) => event.stopPropagation();
+
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-pressed={isSelected}
+      aria-label={`Category ${category.name}, ${category.questionCount} question${
+        category.questionCount === 1 ? "" : "s"
+      } available`}
+      onClick={handleToggle}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "flex flex-col gap-3 rounded-xl border p-4 transition-colors",
+        "flex cursor-pointer flex-col items-stretch gap-1.5 rounded-lg border-2 p-1.5 transition-colors",
+        "outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2",
         isSelected
           ? "border-emerald-600 bg-emerald-50"
           : "border-border bg-card hover:border-emerald-300 hover:bg-emerald-50/40",
       )}
     >
-      <button
-        type="button"
-        onClick={() => onToggle(category)}
-        aria-pressed={isSelected}
-        className="flex min-h-[48px] w-full items-center justify-between gap-3 text-left"
-      >
-        <span className="text-sm font-semibold sm:text-base">{category.name}</span>
-        <span
-          aria-hidden="true"
-          className={cn(
-            "flex size-6 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
-            isSelected
-              ? "border-emerald-600 bg-emerald-600 text-white"
-              : "border-muted-foreground/30 text-transparent",
-          )}
-        >
-          <Check className="size-3.5" />
+      <div className="flex min-h-[44px] flex-col items-center justify-center gap-0.5 px-1 py-1 text-center">
+        <span className="w-full truncate text-sm font-bold leading-tight" title={category.name}>
+          {category.name}
         </span>
-      </button>
+        {isSelected && (
+          <span className="flex items-center gap-1 text-[11px] font-medium text-emerald-700">
+            <Check className="size-3" aria-hidden="true" />
+            selected
+          </span>
+        )}
+      </div>
 
       {isSelected && (
-        <div className="flex flex-col gap-2 border-t border-emerald-200 pt-3">
-          <span className="text-xs font-medium text-emerald-700">
-            {category.questionCount} available
-          </span>
+        <div onClick={stopPropagation} onKeyDown={stopPropagation}>
           <QuestionCounter
             value={count}
             min={1}
@@ -70,6 +88,7 @@ export default function CategoryButton({
             onIncrement={() => onIncrement(category)}
             onDecrement={() => onDecrement(category)}
             label={`questions for ${category.name}`}
+            size="compact"
           />
         </div>
       )}

@@ -9,15 +9,15 @@ import { env } from "@/config/env";
 export const apiClient = axios.create({
   baseURL: env.apiBaseUrl,
   timeout: 15_000,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  // No blanket `Content-Type` here: axios's default request transform
+  // already sets `application/json` automatically for plain-object
+  // payloads (every existing JSON endpoint keeps working unchanged). A
+  // fixed instance-level header would instead break `FormData` uploads
+  // (e.g. the admin workbook upload) by overriding the multipart
+  // boundary the browser needs to set itself.
 });
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // TODO: Centralize error normalization/toasts once UX for errors is designed.
-    return Promise.reject(error);
-  },
+  (error) => Promise.reject(error),
 );

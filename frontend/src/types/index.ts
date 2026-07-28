@@ -1,10 +1,8 @@
 /**
  * Shared, cross-cutting TypeScript types.
  *
- * NOTE: Domain types (e.g. Question, GenerateQuestionsRequest/Response)
- * are intentionally left out until the corresponding business logic and
- * backend contracts are finalized. Mirror `backend/app/models` here once
- * they are.
+ * Domain types below mirror `backend/app/models` - keep them in sync with
+ * the backend's Pydantic models whenever the API contract changes.
  */
 
 export interface HealthResponse {
@@ -34,10 +32,64 @@ export interface CategorySelectionPayloadItem {
 }
 
 /**
- * Shape that will eventually be POSTed to the question generation
- * endpoint once that business logic exists. For now it is only logged to
- * the browser console from the competition setup screen.
+ * Payload POSTed to `POST /api/v1/generate`.
  */
 export interface GenerateQuestionsPayload {
   categories: CategorySelectionPayloadItem[];
+}
+
+/**
+ * A single generated question, mirroring `backend/app/models/question.py`.
+ *
+ * `questionType` is reserved for future question formats (e.g.
+ * "complete-the-block", "next-ayah"). It's optional and unused today -
+ * the backend only produces plain recitation passages - but keeping it
+ * here means new types won't require a breaking change to this
+ * interface. See `GeneratedQuestionCard` for where a type-specific
+ * rendering branch would hook in.
+ */
+export interface Question {
+  category: string;
+  questionNumber: number;
+  text: string;
+  fullText: string;
+  questionType?: string;
+}
+
+/**
+ * Competition Mode status for a generated question. This is purely
+ * frontend/session state - it is never sent to or derived from the
+ * backend.
+ */
+export type QuestionStatus = "pending" | "completed" | "skipped";
+
+/**
+ * Response from `POST /api/v1/reload`, mirroring
+ * `backend/app/models/reload.py`.
+ */
+export interface ReloadResponse {
+  success: boolean;
+  categories: number;
+}
+
+/**
+ * Snapshot of the currently loaded questions workbook, mirroring
+ * `backend/app/models/workbook.py`. Powers the Admin page.
+ */
+export interface WorkbookInfo {
+  filename: string;
+  /** ISO 8601 timestamp string. */
+  lastModified: string;
+  categoryCount: number;
+  totalQuestions: number;
+}
+
+/**
+ * Response from `POST /api/v1/admin/upload-workbook`, mirroring
+ * `backend/app/models/admin.py`.
+ */
+export interface UploadWorkbookResponse {
+  success: boolean;
+  message: string;
+  workbook: WorkbookInfo;
 }

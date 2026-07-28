@@ -18,5 +18,17 @@ class ExcelWorkbookInvalidError(ServiceError):
     """Raised when the workbook exists but cannot be parsed (corrupt, empty, etc.)."""
 
 
+class ExcelWorkbookInUseError(ServiceError):
+    """Raised when the workbook cannot be replaced because another process holds it open."""
+
+
 class ExcelWorkbookNotLoadedError(ServiceError):
     """Raised when data is requested before/without a successful `load()`."""
+
+
+class CategoryNotFoundError(ServiceError):
+    """Raised when a requested category id does not exist in the workbook."""
+
+
+class InsufficientQuestionsError(ServiceError):
+    """Raised when more questions are requested from a category than exist."""

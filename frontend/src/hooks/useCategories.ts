@@ -8,7 +8,8 @@ interface UseCategoriesResult {
   categories: Category[];
   isLoading: boolean;
   error: string | null;
-  refetch: () => void;
+  /** Re-fetches categories; resolves once the new state has been applied. */
+  refetch: () => Promise<void>;
 }
 
 /**
@@ -20,32 +21,24 @@ export function useCategories(): UseCategoriesResult {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [reloadToken, setReloadToken] = useState(0);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchCategories = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    try {
+      const data = await getCategories();
+      setCategories(data);
+    } catch (err) {
+      setCategories([]);
+      setError(getApiErrorMessage(err, "Unable to load categories."));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
-    getCategories()
-      .then((data) => {
-        if (isMounted) setCategories(data);
-      })
-      .catch((err: unknown) => {
-        if (!isMounted) return;
-        setCategories([]);
-        setError(getApiErrorMessage(err, "Unable to load categories."));
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
+  useEffect(() => {
+    void fetchCategories();
+  }, [fetchCategories]);
 
-    return () => {
-      isMounted = false;
-    };
-  }, [reloadToken]);
-
-  const refetch = useCallback(() => setReloadToken((token) => token + 1), []);
-
-  return { categories, isLoading, error, refetch };
+  return { categories, isLoading, error, refetch: fetchCategories };
 }

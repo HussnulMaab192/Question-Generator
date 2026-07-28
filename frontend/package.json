@@ -2,11 +2,13 @@
   "name": "quran-question-generator-frontend",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "description": "Frontend for the Quran Competition Question Generator.",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
+    "serve": "npm run build && npm run preview",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
   },
   "dependencies": {

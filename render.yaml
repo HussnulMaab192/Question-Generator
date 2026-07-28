@@ -1,0 +1,23 @@
+# Render Blueprint for the FastAPI backend.
+# Dashboard: New → Blueprint → connect this repo, or create a Web Service
+# manually with Root Directory = backend (see README).
+services:
+  - type: web
+    name: quran-question-generator-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: CORS_ORIGINS
+        sync: false
+      - key: DATA_DIR
+        value: /var/data
+      - key: QUESTIONS_WORKBOOK_FILENAME
+        value: competition_questions.xlsx
+    disk:
+      name: workbook-data
+      mountPath: /var/data
+      sizeGB: 1

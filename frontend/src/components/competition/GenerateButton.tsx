@@ -1,27 +1,54 @@
-import { Button } from "@/components/ui/button";
+import type { ComponentType, ReactNode } from "react";
+
+import LoadingSpinner from "@/components/common/LoadingSpinner";
+import { Button, type ButtonProps } from "@/components/ui/button";
 
 export interface GenerateButtonProps {
+  label: ReactNode;
+  loadingLabel?: ReactNode;
+  /** Icon rendered before the label (hidden while loading, in favor of the spinner). */
+  icon?: ComponentType<{ className?: string }>;
   disabled: boolean;
+  isLoading?: boolean;
   onClick: () => void;
+  variant?: ButtonProps["variant"];
 }
 
 /**
- * Large primary call-to-action for the competition setup screen.
+ * Primary call-to-action for triggering question generation.
  *
- * Stays disabled until the parent indicates there's a valid selection
- * (at least one category picked). Clicking it does not call the backend
- * yet - question generation is a future step.
+ * Reused for both "Generate Questions" (the main setup CTA) and
+ * "Regenerate" (resends the last payload) so the loading-spinner /
+ * disabled-state logic lives in exactly one place.
  */
-export default function GenerateButton({ disabled, onClick }: GenerateButtonProps) {
+export default function GenerateButton({
+  label,
+  loadingLabel = "Generating…",
+  icon: Icon,
+  disabled,
+  isLoading = false,
+  onClick,
+  variant = "brand",
+}: GenerateButtonProps) {
   return (
     <Button
       type="button"
-      variant="brand"
-      disabled={disabled}
+      variant={variant}
+      disabled={disabled || isLoading}
       onClick={onClick}
-      className="h-14 w-full text-base font-semibold sm:w-auto sm:min-w-[260px]"
+      className="h-14 w-full text-base font-semibold sm:w-auto sm:min-w-[220px]"
     >
-      Generate Questions
+      {isLoading ? (
+        <>
+          <LoadingSpinner className="size-5 text-current" />
+          {loadingLabel}
+        </>
+      ) : (
+        <>
+          {Icon && <Icon className="size-5" />}
+          {label}
+        </>
+      )}
     </Button>
   );
 }

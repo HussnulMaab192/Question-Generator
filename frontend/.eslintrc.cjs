@@ -26,5 +26,14 @@ module.exports = {
         "react-refresh/only-export-components": "off",
       },
     },
+    {
+      // Context modules conventionally co-export a `*Provider` component
+      // alongside its `use*` hook - splitting them into separate files
+      // would only add indirection with no real benefit here.
+      files: ["src/contexts/**/*.tsx"],
+      rules: {
+        "react-refresh/only-export-components": "off",
+      },
+    },
   ],
 };

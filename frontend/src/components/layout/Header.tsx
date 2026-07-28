@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/routes/paths";
 
-const navItems = [{ label: "Home", to: ROUTES.home }];
+const navItems = [
+  // `end: true` on "/" so it doesn't stay highlighted while on `/admin`
+  // (NavLink otherwise treats any `to` as a prefix match).
+  { label: "Home", to: ROUTES.home, end: true },
+  { label: "Admin", to: ROUTES.admin, end: true },
+];
 
 /**
  * Responsive top navigation: a horizontal nav on tablet/desktop widths,
@@ -27,6 +32,7 @@ export default function Header() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               className={({ isActive }) =>
                 cn(
                   "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
@@ -57,6 +63,7 @@ export default function Header() {
             <NavLink
               key={item.to}
               to={item.to}
+              end={item.end}
               onClick={() => setIsMenuOpen(false)}
               className={({ isActive }) =>
                 cn(
