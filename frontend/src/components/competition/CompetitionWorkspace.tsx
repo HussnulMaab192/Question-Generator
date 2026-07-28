@@ -15,7 +15,8 @@ import { useToast } from "@/contexts/ToastContext";
 import { useCategories } from "@/hooks/useCategories";
 import { useCompetitionSetup } from "@/hooks/useCompetitionSetup";
 import { useQuestionGeneration } from "@/hooks/useQuestionGeneration";
-import { useQuestionStatuses } from "@/hooks/useQuestionStatuses";
+import { useQuestionCompletion } from "@/hooks/useQuestionCompletion";
+import { useQuestionScores } from "@/hooks/useQuestionScores";
 import { getApiErrorMessage } from "@/lib/apiError";
 import type { GenerateQuestionsPayload } from "@/types";
 
@@ -27,9 +28,11 @@ type Stage = "setup" | "results";
  *
  * 1. "setup" - category selection, per-category counts, and the
  *    "Generate Questions" call-to-action. This is what the app starts on.
- * 2. "results" - every generated question shown at once, with a toolbar
- *    to go back to setup (selections are preserved) or regenerate
- *    (resends the same request for a fresh shuffle).
+ * 2. "results" - every generated question shown at once with per-question
+ *    Memorization / Tajweed scores, Pending/Completed marks, a scoring
+ *    summary, and a toolbar to go back to setup (selections are preserved)
+ *    or regenerate (resends the same request for a fresh shuffle; scores
+ *    and completion marks reset).
  *
  * Both stages are rendered by this single component so
  * `useCompetitionSetup`'s selection state is never remounted/lost when
@@ -48,7 +51,10 @@ export default function CompetitionWorkspace() {
     hasSelection,
   } = useCompetitionSetup(categories);
   const { questions, pendingAction, error: generationError, generate, regenerate } = useQuestionGeneration();
-  const { statuses, markCompleted, markSkipped } = useQuestionStatuses(questions);
+  const { scores, summary, hasChanges: hasScoreChanges, incrementScore, decrementScore } =
+    useQuestionScores(questions);
+  const { statuses: completionStatuses, markCompleted, markPending, hasCompletedMarks } =
+    useQuestionCompletion(questions);
   const { showToast } = useToast();
   const [stage, setStage] = useState<Stage>("setup");
   const [isRefreshingWorkbook, setIsRefreshingWorkbook] = useState(false);
@@ -79,10 +85,10 @@ export default function CompetitionWorkspace() {
 
   const handleRegenerate = () => void regenerate();
 
-  const hasUnsavedStatusChanges = statuses.some((status) => status !== "pending");
+  const hasUnsavedProgress = hasScoreChanges || hasCompletedMarks;
 
   const handleBackToSetupRequest = () => {
-    if (hasUnsavedStatusChanges) {
+    if (hasUnsavedProgress) {
       setIsConfirmingBackToSetup(true);
       return;
     }
@@ -170,33 +176,40 @@ export default function CompetitionWorkspace() {
   if (stage === "results" && questions) {
     return (
       <>
-        <div className="flex flex-col gap-6 animate-in fade-in">
+        <div className="flex flex-col animate-in fade-in">
+          {/* Scoreboard band — visually separate from the question cards below. */}
           <CompetitionToolbar
             questions={questions}
-            statuses={statuses}
+            summary={summary}
             isRegenerating={pendingAction === "regenerate"}
             onBackToSetup={handleBackToSetupRequest}
             onRegenerate={handleRegenerate}
           />
 
-          {generationErrorBanner}
+          {/* 32px gap so the first card never reads as part of the scoreboard. */}
+          <div className="mt-8 flex flex-col gap-4">
+            {generationErrorBanner}
 
-          {questions.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No questions generated yet.</p>
-          ) : (
-            <GeneratedQuestionsGrid
-              questions={questions}
-              statuses={statuses}
-              onMarkCompleted={markCompleted}
-              onMarkSkipped={markSkipped}
-            />
-          )}
+            {questions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No questions generated yet.</p>
+            ) : (
+              <GeneratedQuestionsGrid
+                questions={questions}
+                scores={scores}
+                completionStatuses={completionStatuses}
+                onIncrementScore={incrementScore}
+                onDecrementScore={decrementScore}
+                onMarkCompleted={markCompleted}
+                onMarkPending={markPending}
+              />
+            )}
+          </div>
         </div>
 
         <ConfirmDialog
           open={isConfirmingBackToSetup}
           title="Leave Generated Questions?"
-          description="You've marked some questions as completed or skipped. Going back to setup and generating again will create a new shuffled set and reset that progress."
+          description="You've entered scores or marked questions as completed. Going back to setup and generating again will create a new shuffled set and reset that progress."
           confirmLabel="Back to Setup"
           cancelLabel="Stay Here"
           onConfirm={confirmBackToSetup}

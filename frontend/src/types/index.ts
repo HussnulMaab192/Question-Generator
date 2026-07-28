@@ -57,11 +57,28 @@ export interface Question {
 }
 
 /**
- * Competition Mode status for a generated question. This is purely
- * frontend/session state - it is never sent to or derived from the
- * backend.
+ * Per-question competition scores. Purely frontend/session state - never
+ * sent to or derived from the backend. Kept as a plain object so later
+ * Excel/PDF export can consume the same shape without UI changes.
  */
-export type QuestionStatus = "pending" | "completed" | "skipped";
+export interface QuestionScore {
+  memorization: number;
+  tajweed: number;
+}
+
+/**
+ * Explicit examiner mark for a generated question. Independent of scores:
+ * a question can have scores entered and still remain "pending" until the
+ * examiner marks it "completed". Purely frontend/session state.
+ */
+export type QuestionCompletionStatus = "pending" | "completed";
+
+/** Inclusive bounds for each individual score field. */
+export const SCORE_MIN = 0;
+export const SCORE_MAX = 10;
+
+/** Two scored dimensions per question (memorization + tajweed). */
+export const SCORE_FIELDS_PER_QUESTION = 2;
 
 /**
  * Response from `POST /api/v1/reload`, mirroring

@@ -3,8 +3,8 @@
 A production web application for generating and running Quran competition
 question sets from a live Excel workbook. An examiner selects categories
 (Excel sheets) and how many questions to draw from each, generates a
-shuffled set, then works through it during the competition while tracking
-each question's status (Pending / Completed / Skipped).
+shuffled set, then scores each question for Memorization and Tajweed
+(0–10 each) during the competition.
 
 ## Tech Stack
 
@@ -427,9 +427,9 @@ Fully implemented, end to end:
   selection summary, and a "Refresh Categories" action that forces a
   workbook reload without restarting anything.
 - ✅ **Frontend — Generated Questions:** every generated question shown at
-  once in a responsive card grid, with Pending/Completed/Skipped status
-  tracking, a sticky toolbar (progress summary, Back to Setup, Regenerate),
-  and a confirmation prompt before leaving if there's unsaved progress.
+  once in a responsive card grid, with per-question Memorization and
+  Tajweed scores (0–10), a sticky toolbar (scoring summary, Back to Setup,
+  Regenerate), and a confirmation prompt before leaving if scores were entered.
 - ✅ **UX polish:** loading skeletons, toast notifications, tooltips,
   friendly empty states, and an app version footer.
 - ✅ **Reliability:** the workbook file is never left open/locked by the

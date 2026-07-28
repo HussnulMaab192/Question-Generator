@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import LoadingSpinner from "@/components/common/LoadingSpinner";
 import { Button, type ButtonProps } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export interface GenerateButtonProps {
   label: ReactNode;
@@ -12,6 +13,8 @@ export interface GenerateButtonProps {
   isLoading?: boolean;
   onClick: () => void;
   variant?: ButtonProps["variant"];
+  /** Optional class overrides (e.g. a slightly shorter height in the scoreboard). */
+  className?: string;
 }
 
 /**
@@ -29,6 +32,7 @@ export default function GenerateButton({
   isLoading = false,
   onClick,
   variant = "brand",
+  className,
 }: GenerateButtonProps) {
   return (
     <Button
@@ -36,7 +40,7 @@ export default function GenerateButton({
       variant={variant}
       disabled={disabled || isLoading}
       onClick={onClick}
-      className="h-14 w-full text-base font-semibold sm:w-auto sm:min-w-[220px]"
+      className={cn("h-14 w-full text-base font-semibold sm:w-auto sm:min-w-[220px]", className)}
     >
       {isLoading ? (
         <>

@@ -15,8 +15,7 @@ export interface ConfirmDialogProps {
 /**
  * Minimal, dependency-free confirmation modal. Renders nothing while
  * `open` is false. Used to confirm potentially-destructive navigation
- * (e.g. leaving the Generated Questions screen with unsaved status
- * changes).
+ * (e.g. leaving the Generated Questions screen with entered scores).
  */
 export default function ConfirmDialog({
   open,
