@@ -51,8 +51,12 @@ export default function CompetitionWorkspace() {
     hasSelection,
   } = useCompetitionSetup(categories);
   const { questions, pendingAction, error: generationError, generate, regenerate } = useQuestionGeneration();
-  const { scores, summary, hasChanges: hasScoreChanges, incrementScore, decrementScore } =
-    useQuestionScores(questions);
+  const {
+    scores,
+    summary,
+    hasChanges: hasScoreChanges,
+    setScore,
+  } = useQuestionScores(questions);
   const { statuses: completionStatuses, markCompleted, markPending, hasCompletedMarks } =
     useQuestionCompletion(questions);
   const { showToast } = useToast();
@@ -131,7 +135,10 @@ export default function CompetitionWorkspace() {
         <div className="flex flex-col gap-1">
           <h2 className="text-base font-semibold">No workbook loaded.</h2>
           <p className="max-w-sm text-sm text-muted-foreground">
-            Add the competition questions Excel file to the backend's data folder, then retry.
+            Upload a workbook from the Admin page, or place{" "}
+            <code className="rounded bg-muted px-1">competition_questions.xlsx</code> in the
+            backend data folder. On free-tier cloud hosts the file is lost after a server restart —
+            re-upload if that happens.
           </p>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => void refetch()} className="gap-2">
@@ -197,8 +204,7 @@ export default function CompetitionWorkspace() {
                 questions={questions}
                 scores={scores}
                 completionStatuses={completionStatuses}
-                onIncrementScore={incrementScore}
-                onDecrementScore={decrementScore}
+                onSetScore={setScore}
                 onMarkCompleted={markCompleted}
                 onMarkPending={markPending}
               />

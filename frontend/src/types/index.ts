@@ -60,6 +60,9 @@ export interface Question {
  * Per-question competition scores. Purely frontend/session state - never
  * sent to or derived from the backend. Kept as a plain object so later
  * Excel/PDF export can consume the same shape without UI changes.
+ *
+ * Per-question total is out of 10:
+ *   Memorization 0–7.5  +  Tajweed 0–2.5  =  Question Total 0–10
  */
 export interface QuestionScore {
   memorization: number;
@@ -73,12 +76,17 @@ export interface QuestionScore {
  */
 export type QuestionCompletionStatus = "pending" | "completed";
 
-/** Inclusive bounds for each individual score field. */
-export const SCORE_MIN = 0;
-export const SCORE_MAX = 10;
+/** Shared step for both score fields. */
+export const SCORE_STEP = 0.5;
 
-/** Two scored dimensions per question (memorization + tajweed). */
-export const SCORE_FIELDS_PER_QUESTION = 2;
+export const MEMORIZATION_MIN = 0;
+export const MEMORIZATION_MAX = 7.5;
+
+export const TAJWEED_MIN = 0;
+export const TAJWEED_MAX = 2.5;
+
+/** Memorization max + Tajweed max per question. */
+export const QUESTION_TOTAL_MAX = MEMORIZATION_MAX + TAJWEED_MAX;
 
 /**
  * Response from `POST /api/v1/reload`, mirroring
@@ -99,6 +107,9 @@ export interface WorkbookInfo {
   lastModified: string;
   categoryCount: number;
   totalQuestions: number;
+  /** ISO 8601 timestamp from the last Admin upload, if known. */
+  uploadedAt?: string | null;
+  status: "loaded" | "missing";
 }
 
 /**

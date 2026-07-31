@@ -59,16 +59,22 @@ def test_get_workbook_info_returns_current_stats(tmp_path: Path) -> None:
         assert body["filename"] == "workbook.xlsx"
         assert body["categoryCount"] == 2
         assert body["totalQuestions"] == 3
+        assert body["status"] == "loaded"
         assert "lastModified" in body and body["lastModified"]
 
 
-def test_get_workbook_info_returns_503_when_workbook_missing(tmp_path: Path) -> None:
+def test_get_workbook_info_returns_missing_status_when_workbook_absent(tmp_path: Path) -> None:
     missing_service = ExcelService(tmp_path / "missing.xlsx")
 
     with override_excel_service(missing_service):
         response = client.get("/api/v1/admin/workbook")
 
-        assert response.status_code == 503
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "missing"
+        assert body["filename"] == "missing.xlsx"
+        assert body["categoryCount"] == 0
+        assert body["totalQuestions"] == 0
 
 
 def test_upload_workbook_replaces_and_reloads(tmp_path: Path) -> None:
@@ -91,6 +97,8 @@ def test_upload_workbook_replaces_and_reloads(tmp_path: Path) -> None:
         assert "successfully" in body["message"].lower()
         assert body["workbook"]["categoryCount"] == 3
         assert body["workbook"]["filename"] == "workbook.xlsx"  # keeps the original filename on disk
+        assert body["workbook"]["status"] == "loaded"
+        assert body["workbook"]["uploadedAt"] is not None
 
         # And GET /categories reflects it immediately - no restart, no
         # separate reload call needed.

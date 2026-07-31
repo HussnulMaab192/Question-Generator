@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { clampScore, SCORE_FIELD_CONFIG, type ScoreField } from "@/lib/scoring";
 import {
-  SCORE_FIELDS_PER_QUESTION,
-  SCORE_MAX,
-  SCORE_MIN,
+  MEMORIZATION_MAX,
+  MEMORIZATION_MIN,
+  QUESTION_TOTAL_MAX,
+  TAJWEED_MAX,
+  TAJWEED_MIN,
   type Question,
   type QuestionScore,
 } from "@/types";
 
-export type ScoreField = keyof QuestionScore;
+export type { ScoreField };
 
 export interface QuestionScoresSummary {
   questionCount: number;
   memorizationTotal: number;
+  memorizationMax: number;
   tajweedTotal: number;
-  grandTotal: number;
-  /** Maximum attainable grand total: questionCount × 10 × 2. */
-  maxPossible: number;
+  tajweedMax: number;
+  overallTotal: number;
+  overallMax: number;
 }
 
 /**
@@ -39,16 +43,13 @@ interface UseQuestionScoresResult {
   hasChanges: boolean;
   incrementScore: (index: number, field: ScoreField) => void;
   decrementScore: (index: number, field: ScoreField) => void;
+  setScore: (index: number, field: ScoreField, value: number) => void;
   /** Flat list pairing each generated question with its scores (export-ready). */
   getExportableScores: () => ExportableQuestionScore[];
 }
 
 function emptyScore(): QuestionScore {
-  return { memorization: SCORE_MIN, tajweed: SCORE_MIN };
-}
-
-function clampScore(value: number): number {
-  return Math.min(SCORE_MAX, Math.max(SCORE_MIN, value));
+  return { memorization: MEMORIZATION_MIN, tajweed: TAJWEED_MIN };
 }
 
 function summarizeScores(scores: QuestionScore[]): QuestionScoresSummary {
@@ -57,20 +58,19 @@ function summarizeScores(scores: QuestionScore[]): QuestionScoresSummary {
   const tajweedTotal = scores.reduce((sum, score) => sum + score.tajweed, 0);
   return {
     questionCount,
-    memorizationTotal,
-    tajweedTotal,
-    grandTotal: memorizationTotal + tajweedTotal,
-    maxPossible: questionCount * SCORE_MAX * SCORE_FIELDS_PER_QUESTION,
+    memorizationTotal: Number(memorizationTotal.toFixed(1)),
+    memorizationMax: Number((questionCount * MEMORIZATION_MAX).toFixed(1)),
+    tajweedTotal: Number(tajweedTotal.toFixed(1)),
+    tajweedMax: Number((questionCount * TAJWEED_MAX).toFixed(1)),
+    overallTotal: Number((memorizationTotal + tajweedTotal).toFixed(1)),
+    overallMax: Number((questionCount * QUESTION_TOTAL_MAX).toFixed(1)),
   };
 }
 
 /**
- * Owns Memorization / Tajweed scores (0–10) for every generated question.
- *
- * Never calls the backend. Scores reset to zero whenever a new question
- * set arrives (Generate / Regenerate). The plain `scores` array and
- * `getExportableScores()` are intentionally export-friendly so Excel/PDF
- * output can be added later without redesigning the UI.
+ * Owns Memorization (0–7.5) / Tajweed (0–2.5) scores for every generated
+ * question. Never calls the backend. Scores reset to zero whenever a new
+ * question set arrives (Generate / Regenerate).
  */
 export function useQuestionScores(questions: Question[] | null): UseQuestionScoresResult {
   const [scores, setScores] = useState<QuestionScore[]>([]);
@@ -79,29 +79,41 @@ export function useQuestionScores(questions: Question[] | null): UseQuestionScor
     setScores(questions ? questions.map(() => emptyScore()) : []);
   }, [questions]);
 
-  const adjustScore = useCallback((index: number, field: ScoreField, delta: number) => {
+  const setScore = useCallback((index: number, field: ScoreField, value: number) => {
     setScores((previous) =>
       previous.map((score, i) => {
         if (i !== index) return score;
-        return { ...score, [field]: clampScore(score[field] + delta) };
+        return { ...score, [field]: clampScore(field, value) };
       }),
     );
   }, []);
 
+  const adjustScore = useCallback(
+    (index: number, field: ScoreField, delta: number) => {
+      setScores((previous) =>
+        previous.map((score, i) => {
+          if (i !== index) return score;
+          return { ...score, [field]: clampScore(field, score[field] + delta) };
+        }),
+      );
+    },
+    [],
+  );
+
   const incrementScore = useCallback(
-    (index: number, field: ScoreField) => adjustScore(index, field, 1),
+    (index: number, field: ScoreField) => adjustScore(index, field, SCORE_FIELD_CONFIG[field].step),
     [adjustScore],
   );
 
   const decrementScore = useCallback(
-    (index: number, field: ScoreField) => adjustScore(index, field, -1),
+    (index: number, field: ScoreField) => adjustScore(index, field, -SCORE_FIELD_CONFIG[field].step),
     [adjustScore],
   );
 
   const summary = useMemo(() => summarizeScores(scores), [scores]);
 
   const hasChanges = useMemo(
-    () => scores.some((score) => score.memorization > SCORE_MIN || score.tajweed > SCORE_MIN),
+    () => scores.some((score) => score.memorization > MEMORIZATION_MIN || score.tajweed > TAJWEED_MIN),
     [scores],
   );
 
@@ -114,7 +126,7 @@ export function useQuestionScores(questions: Question[] | null): UseQuestionScor
         questionNumber: question.questionNumber,
         memorization: score.memorization,
         tajweed: score.tajweed,
-        total: score.memorization + score.tajweed,
+        total: Number((score.memorization + score.tajweed).toFixed(1)),
       };
     });
   }, [questions, scores]);
@@ -125,6 +137,7 @@ export function useQuestionScores(questions: Question[] | null): UseQuestionScor
     hasChanges,
     incrementScore,
     decrementScore,
+    setScore,
     getExportableScores,
   };
 }

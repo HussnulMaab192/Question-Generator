@@ -35,6 +35,7 @@ surface as a clear HTTP 409 instead of a 500.
 """
 
 import errno
+import json
 import logging
 import os
 import re
@@ -87,6 +88,8 @@ class ExcelService:
         # mtime observed at the last load *attempt* (success or failure) -
         # compared against the file's current mtime to detect changes.
         self._observed_mtime: object = _NEVER_ATTEMPTED
+        # Last Admin-upload timestamp (also persisted beside the workbook).
+        self._uploaded_at: Optional[datetime] = self._read_uploaded_at_meta()
 
     @property
     def workbook_path(self) -> Path:
@@ -174,6 +177,19 @@ class ExcelService:
             last_modified=last_modified,
             category_count=len(questions_by_category),
             total_questions=sum(len(questions) for questions in questions_by_category.values()),
+            uploaded_at=self._uploaded_at or self._read_uploaded_at_meta(),
+            status="loaded",
+        )
+
+    def get_missing_workbook_info(self) -> WorkbookInfo:
+        """Admin-friendly snapshot when no workbook file is present on disk."""
+        return WorkbookInfo(
+            filename=self._workbook_path.name,
+            last_modified=datetime.now(timezone.utc),
+            category_count=0,
+            total_questions=0,
+            uploaded_at=None,
+            status="missing",
         )
 
     def replace_workbook_file(self, content: bytes) -> WorkbookInfo:
@@ -216,10 +232,40 @@ class ExcelService:
             temp_path.unlink(missing_ok=True)
             raise
 
+        self._uploaded_at = datetime.now(timezone.utc)
+        self._write_uploaded_at_meta(self._uploaded_at)
         self.load()
         return self.get_workbook_info()
 
     # -- internal helpers -------------------------------------------------
+
+    def _meta_path(self) -> Path:
+        """Sidecar JSON next to the workbook, storing Admin upload metadata."""
+        return self._workbook_path.with_name(self._workbook_path.name + ".meta.json")
+
+    def _read_uploaded_at_meta(self) -> Optional[datetime]:
+        meta_path = self._meta_path()
+        if not meta_path.is_file():
+            return None
+        try:
+            payload = json.loads(meta_path.read_text(encoding="utf-8"))
+            raw = payload.get("uploadedAt")
+            if not raw:
+                return None
+            return datetime.fromisoformat(raw)
+        except (OSError, ValueError, json.JSONDecodeError) as exc:
+            logger.warning("Could not read workbook meta '%s': %s", meta_path, exc)
+            return None
+
+    def _write_uploaded_at_meta(self, uploaded_at: datetime) -> None:
+        meta_path = self._meta_path()
+        try:
+            meta_path.write_text(
+                json.dumps({"uploadedAt": uploaded_at.isoformat(), "filename": self._workbook_path.name}),
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            logger.warning("Could not write workbook meta '%s': %s", meta_path, exc)
 
     def _replace_with_retries(self, source: Path, destination: Path) -> None:
         """Replace `destination` with `source`, retrying transient Windows locks.

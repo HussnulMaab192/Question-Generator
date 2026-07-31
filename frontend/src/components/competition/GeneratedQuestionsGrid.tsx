@@ -6,8 +6,7 @@ export interface GeneratedQuestionsGridProps {
   questions: Question[];
   scores: QuestionScore[];
   completionStatuses: QuestionCompletionStatus[];
-  onIncrementScore: (index: number, field: ScoreField) => void;
-  onDecrementScore: (index: number, field: ScoreField) => void;
+  onSetScore: (index: number, field: ScoreField, value: number) => void;
   onMarkCompleted: (index: number) => void;
   onMarkPending: (index: number) => void;
 }
@@ -20,8 +19,7 @@ export default function GeneratedQuestionsGrid({
   questions,
   scores,
   completionStatuses,
-  onIncrementScore,
-  onDecrementScore,
+  onSetScore,
   onMarkCompleted,
   onMarkPending,
 }: GeneratedQuestionsGridProps) {
@@ -36,10 +34,8 @@ export default function GeneratedQuestionsGrid({
             question={question}
             score={score}
             completionStatus={completionStatus}
-            onIncrementMemorization={() => onIncrementScore(index, "memorization")}
-            onDecrementMemorization={() => onDecrementScore(index, "memorization")}
-            onIncrementTajweed={() => onIncrementScore(index, "tajweed")}
-            onDecrementTajweed={() => onDecrementScore(index, "tajweed")}
+            onChangeMemorization={(value) => onSetScore(index, "memorization", value)}
+            onChangeTajweed={(value) => onSetScore(index, "tajweed", value)}
             onMarkCompleted={() => onMarkCompleted(index)}
             onMarkPending={() => onMarkPending(index)}
           />

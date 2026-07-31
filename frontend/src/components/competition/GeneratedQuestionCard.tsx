@@ -5,6 +5,7 @@ import QuestionCompletionBadge from "@/components/competition/QuestionCompletion
 import ScoreStepper from "@/components/competition/ScoreStepper";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { SCORE_FIELD_CONFIG } from "@/lib/scoring";
 import { cn } from "@/lib/utils";
 import type { Question, QuestionCompletionStatus, QuestionScore } from "@/types";
 
@@ -12,10 +13,8 @@ export interface GeneratedQuestionCardProps {
   question: Question;
   score: QuestionScore;
   completionStatus: QuestionCompletionStatus;
-  onIncrementMemorization: () => void;
-  onDecrementMemorization: () => void;
-  onIncrementTajweed: () => void;
-  onDecrementTajweed: () => void;
+  onChangeMemorization: (value: number) => void;
+  onChangeTajweed: (value: number) => void;
   onMarkCompleted: () => void;
   onMarkPending: () => void;
 }
@@ -37,7 +36,7 @@ function QuestionContent({ question, isExpanded }: { question: Question; isExpan
     <p
       dir="rtl"
       lang="ar"
-      className="w-full flex-1 text-center text-2xl font-medium leading-loose sm:text-[1.75rem]"
+      className="w-full text-center text-lg font-medium leading-snug sm:text-xl sm:leading-relaxed"
     >
       {isExpanded ? question.fullText : question.text}
     </p>
@@ -46,22 +45,22 @@ function QuestionContent({ question, isExpanded }: { question: Question; isExpan
 
 /**
  * One generated question card: category, number, Arabic text, expand
- * control, Pending/Completed mark, and Memorization / Tajweed steppers.
+ * control, Pending/Completed mark, and typed Memorization / Tajweed scores.
  * Score changes never auto-complete a question — only the explicit mark does.
  */
 export default function GeneratedQuestionCard({
   question,
   score,
   completionStatus,
-  onIncrementMemorization,
-  onDecrementMemorization,
-  onIncrementTajweed,
-  onDecrementTajweed,
+  onChangeMemorization,
+  onChangeTajweed,
   onMarkCompleted,
   onMarkPending,
 }: GeneratedQuestionCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const isCompleted = completionStatus === "completed";
+  const memorizationConfig = SCORE_FIELD_CONFIG.memorization;
+  const tajweedConfig = SCORE_FIELD_CONFIG.tajweed;
 
   return (
     <Card
@@ -70,7 +69,7 @@ export default function GeneratedQuestionCard({
         COMPLETION_ACCENT_BORDER[completionStatus],
       )}
     >
-      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b bg-muted/30 py-3">
+      <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 space-y-0 border-b bg-muted/30 py-2.5">
         <div className="flex items-center gap-2.5">
           <span className="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
             Category {question.category}
@@ -82,10 +81,10 @@ export default function GeneratedQuestionCard({
         <QuestionCompletionBadge status={completionStatus} />
       </CardHeader>
 
-      <CardContent className="flex flex-1 flex-col items-center gap-5 p-5 sm:p-6">
+      <CardContent className="flex flex-1 flex-col items-center gap-3 p-4 sm:p-5">
         <QuestionContent question={question} isExpanded={isExpanded} />
 
-        <div className="flex w-full flex-wrap items-center justify-center gap-2 border-t pt-4">
+        <div className="flex w-full flex-wrap items-center justify-center gap-2 border-t pt-3">
           <Button
             type="button"
             variant="outline"
@@ -125,15 +124,21 @@ export default function GeneratedQuestionCard({
         <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
           <ScoreStepper
             label="Memorization Score"
+            field="memorization"
             value={score.memorization}
-            onIncrement={onIncrementMemorization}
-            onDecrement={onDecrementMemorization}
+            min={memorizationConfig.min}
+            max={memorizationConfig.max}
+            step={memorizationConfig.step}
+            onChange={onChangeMemorization}
           />
           <ScoreStepper
             label="Tajweed Score"
+            field="tajweed"
             value={score.tajweed}
-            onIncrement={onIncrementTajweed}
-            onDecrement={onDecrementTajweed}
+            min={tajweedConfig.min}
+            max={tajweedConfig.max}
+            step={tajweedConfig.step}
+            onChange={onChangeTajweed}
           />
         </div>
       </CardContent>

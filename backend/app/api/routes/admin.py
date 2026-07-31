@@ -20,6 +20,7 @@ from app.services.exceptions import (
     ExcelWorkbookInvalidError,
     ExcelWorkbookNotFoundError,
 )
+from app.services.question_history import get_question_history
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -33,7 +34,13 @@ MAX_UPLOAD_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
     summary="Get metadata about the currently loaded questions workbook",
 )
 def get_workbook_info(excel_service: ExcelService = Depends(get_excel_service)) -> WorkbookInfo:
-    return excel_service.get_workbook_info()
+    try:
+        return excel_service.get_workbook_info()
+    except ExcelWorkbookNotFoundError:
+        # Return a structured "missing" snapshot (HTTP 200) so the Admin
+        # page can show a clear Workbook Missing status + re-upload guidance
+        # instead of treating absence as an unexpected server error.
+        return excel_service.get_missing_workbook_info()
 
 
 @router.post(
@@ -70,6 +77,8 @@ async def upload_workbook(
 
     try:
         workbook_info = excel_service.replace_workbook_file(content)
+        # A brand-new workbook starts a fresh recently-used cycle.
+        get_question_history().clear_all()
     except (ExcelWorkbookNotFoundError, ExcelWorkbookInvalidError) as exc:
         # A bad upload is a client-input problem (400), not a server
         # malfunction (500) - the original workbook on disk is untouched.

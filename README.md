@@ -166,8 +166,13 @@ Returns one category per sheet, derived dynamically:
 
 ### `POST /api/v1/generate`
 
-Randomly selects the requested number of (never duplicated) questions per
-category:
+Randomly selects the requested number of questions per category with **no
+duplicates within a single response**. Across Generate calls while the
+server is running, an **in-memory history cache** prefers questions that
+have not been used yet in each category. Only after every question in a
+category has been used once does that category's history clear and a new
+cycle begin. History lives in process memory only (no database) and resets
+on server restart or when a new workbook is uploaded.
 
 ```json
 // Request
@@ -195,14 +200,18 @@ above):
 
 ### `GET /api/v1/admin/workbook`
 
-Metadata about the currently loaded workbook, for the Admin page:
+Metadata about the currently loaded workbook, for the Admin page. When the
+file is absent, returns HTTP 200 with `"status": "missing"` (not a 500) so
+the UI can show a clear **Workbook Missing** state:
 
 ```json
 {
   "filename": "competition_questions.xlsx",
   "lastModified": "2026-07-27T22:45:14.239Z",
   "categoryCount": 15,
-  "totalQuestions": 148
+  "totalQuestions": 148,
+  "uploadedAt": "2026-07-27T22:40:00.000Z",
+  "status": "loaded"
 }
 ```
 
@@ -213,13 +222,21 @@ Uploads a replacement workbook (multipart `file` field, `.xlsx` only, max
 touched** — parsed on a throwaway copy first — so a bad upload can never
 corrupt or replace a working workbook; only once it's confirmed to be a
 readable workbook is the real file atomically swapped in and `ExcelService`
-reloaded. No restart required.
+reloaded. No restart required. Upload time is recorded in a small sidecar
+meta file next to the workbook.
 
 ```json
 {
   "success": true,
   "message": "Workbook uploaded and reloaded successfully. 15 categories found.",
-  "workbook": { "filename": "...", "lastModified": "...", "categoryCount": 15, "totalQuestions": 148 }
+  "workbook": {
+    "filename": "...",
+    "lastModified": "...",
+    "categoryCount": 15,
+    "totalQuestions": 148,
+    "uploadedAt": "...",
+    "status": "loaded"
+  }
 }
 ```
 
@@ -355,11 +372,49 @@ Use production mode for the live competition itself: it's a smaller,
 optimized build that won't hot-reload (and briefly disconnect clients)
 if a file happens to change mid-event.
 
+## Scoring rules (frontend)
+
+Each generated question is scored out of **10**:
+
+| Field | Range | Step |
+| ----- | ----- | ---- |
+| Memorization | 0 – 7.5 | 0.5 |
+| Tajweed | 0 – 2.5 | 0.5 |
+| Question total | 0 – 10 | — |
+
+Scores can be adjusted with **+ / −** or by typing directly. Values are
+clamped and snapped to the nearest 0.5. The scoreboard shows separate
+Memorization / Tajweed / Overall totals with maxima
+(`questions × 7.5`, `questions × 2.5`, `questions × 10`). Pending /
+Completed marks are independent of scores.
+
+## Question history
+
+`QuestionService` keeps an in-memory recently-used set per category so
+consecutive competitions prefer unused questions. Within one Generate
+response, questions never repeat. Across Generates, a category only
+repeats after every question in that sheet has been used once; then the
+history clears and a new cycle begins. This cache does **not** survive
+server restarts (by design — no database).
+
+## Workbook persistence
+
+Uploads write to `DATA_DIR` on the server filesystem. That is durable on a
+local machine or when Render has a **persistent disk** mounted at
+`DATA_DIR`.
+
+On **Render’s free tier without a disk**, the filesystem is ephemeral:
+when the service sleeps or redeploys, uploaded workbooks disappear. The
+Admin page then shows **Workbook Missing** with an explanation and asks
+you to re-upload. This is not silent data loss — the status is explicit.
+For production competitions on Render, attach a persistent disk (see
+`render.yaml`) and point `DATA_DIR` at the mount.
+
 ### Cloud deployment (Render + Vercel)
 
 The competition can also run hosted (backend on Render, frontend on Vercel).
 Workbook uploads require a **persistent disk** on Render — the free
-ephemeral filesystem loses files on every redeploy.
+ephemeral filesystem loses files when the dyno sleeps or redeploys.
 
 #### Backend on Render
 
@@ -398,10 +453,12 @@ Health check URL: `https://<your-service>.onrender.com/api/v1/health`
 #### Admin upload workflow (any environment)
 
 1. Open `/admin` in the app.
-2. Confirm current workbook stats (name, last modified, categories, total questions).
+2. Confirm current workbook stats: name, upload time, number of sheets,
+   last updated, and **Workbook Loaded** / **Workbook Missing**.
 3. Choose a `.xlsx` file (max 20 MB) → **Upload & Replace Workbook**.
-4. On success: toast + stats refresh; Home category grid picks up the new
-   sheets (use **Refresh Categories** if you already had Setup open).
+4. On success: toast + stats refresh (the page also polls quietly so status
+   stays current); Home category grid picks up the new sheets (use
+   **Refresh Categories** if Setup was already open).
 5. On failure: the toast shows the backend's exact `detail` (e.g. wrong
    extension, invalid file, or file locked by Excel → HTTP 409).
 
@@ -420,16 +477,18 @@ Fully implemented, end to end:
   on disk changes, and exposes `GET /api/v1/categories` and
   `POST /api/v1/reload`.
 - ✅ **Question generation:** `POST /api/v1/generate` randomly selects
-  non-duplicate questions per category via `QuestionService`, with strict
-  validation (`400` for unknown categories or insufficient questions).
+  non-duplicate questions per category via `QuestionService`, preferring
+  unused questions via an in-memory history cache, with strict validation
+  (`400` for unknown categories or insufficient questions).
 - ✅ **Frontend — Competition Setup:** dynamic, workbook-driven category
   grid (fully clickable tiles, compact per-category counters), a live
   selection summary, and a "Refresh Categories" action that forces a
   workbook reload without restarting anything.
 - ✅ **Frontend — Generated Questions:** every generated question shown at
-  once in a responsive card grid, with per-question Memorization and
-  Tajweed scores (0–10), a sticky toolbar (scoring summary, Back to Setup,
-  Regenerate), and a confirmation prompt before leaving if scores were entered.
+  once in a responsive card grid, with Memorization (0–7.5) / Tajweed
+  (0–2.5) typed + stepper scores, Pending/Completed marks, a scoreboard
+  summary (separate maxima), Back to Setup / Regenerate, and a confirmation
+  prompt before leaving if progress was entered.
 - ✅ **UX polish:** loading skeletons, toast notifications, tooltips,
   friendly empty states, and an app version footer.
 - ✅ **Reliability:** the workbook file is never left open/locked by the

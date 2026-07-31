@@ -9,15 +9,13 @@ import { ROUTES } from "@/routes/paths";
 
 /**
  * Workbook administration: view the currently loaded questions workbook
- * (name, last modified time, category/question counts) and upload a
- * replacement `.xlsx` file. Uploading validates, atomically replaces the
- * file on disk, and reloads it - no server restart required, and this
- * page's own stats refresh automatically right after a successful upload.
+ * and upload a replacement `.xlsx` file. Stats auto-refresh after upload
+ * and via a quiet poll so status stays current without a manual reload.
  */
 export default function AdminPage() {
   const { info, isLoading, error, refetch } = useWorkbookInfo();
 
-  const isMissingWorkbook = Boolean(error?.toLowerCase().includes("workbook not found"));
+  const isMissingWorkbook = Boolean(info?.status === "missing" || (!info && !isLoading && !error));
 
   return (
     <div className="flex flex-col gap-6">
@@ -35,17 +33,25 @@ export default function AdminPage() {
         </p>
       </div>
 
-      {error && !isMissingWorkbook && (
+      {error && (
         <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive">
           <AlertTriangle className="mt-0.5 size-4 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
-      {isMissingWorkbook && (
-        <div className="flex items-start gap-2 rounded-lg border border-dashed bg-muted/30 p-4 text-sm text-muted-foreground">
-          <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-          <span>No workbook loaded yet. Upload one below to get started.</span>
+      {isMissingWorkbook && !error && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          <AlertTriangle className="mt-0.5 size-4 shrink-0 text-amber-700" />
+          <div className="flex flex-col gap-1">
+            <span className="font-semibold">Workbook Missing</span>
+            <span>
+              No questions workbook is currently on disk. On cloud hosts like Render&apos;s free
+              tier, the filesystem is ephemeral — files uploaded earlier are lost when the server
+              sleeps or restarts. Upload the `.xlsx` file again below (or attach a persistent disk
+              and set <code className="rounded bg-amber-100 px-1">DATA_DIR</code> to that mount).
+            </span>
+          </div>
         </div>
       )}
 
@@ -53,9 +59,6 @@ export default function AdminPage() {
 
       <WorkbookUploadForm
         onUploaded={() => {
-          // The upload response already carries fresh stats, but refetch
-          // anyway so this page stays the source of truth (e.g. the real
-          // last-modified timestamp straight from disk).
           void refetch();
         }}
       />

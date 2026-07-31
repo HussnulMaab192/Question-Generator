@@ -11,6 +11,7 @@ from openpyxl import Workbook
 from app.models.question import CategorySelection
 from app.services.exceptions import CategoryNotFoundError, InsufficientQuestionsError
 from app.services.excel_service import ExcelService
+from app.services.question_history import QuestionHistoryCache
 from app.services.question_service import QuestionService
 
 
@@ -30,7 +31,8 @@ def _make_service(tmp_path: Path, sheets: dict[str, list[list[object]]]) -> Ques
     _write_workbook(workbook_path, sheets)
     excel_service = ExcelService(workbook_path)
     excel_service.load()
-    return QuestionService(excel_service)
+    # Fresh history per test so the process-wide singleton cannot leak state.
+    return QuestionService(excel_service, history=QuestionHistoryCache())
 
 
 def test_generate_questions_success(tmp_path: Path) -> None:

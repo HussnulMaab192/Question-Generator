@@ -24,8 +24,11 @@ router = APIRouter(tags=["generate"])
     summary="Generate a random set of questions for the selected categories",
     description=(
         "For every requested category, randomly selects the requested number "
-        "of questions with no duplicates. Fails with 400 if a category is "
-        "unknown or doesn't have enough questions available."
+        "of questions with no duplicates within the response. Prefers questions "
+        "that have not been used since the category's in-memory history was "
+        "last cleared; once every question in a category has been used, the "
+        "history resets and a new cycle begins. Fails with 400 if a category "
+        "is unknown or doesn't have enough questions available."
     ),
 )
 def generate_questions(
